@@ -115,6 +115,16 @@ single-writer loop with a promise chain.
   agent turn.** That is a deliberate default and the first thing to narrow if the
   clock talks too much.
 
+## Release verification
+
+- On 2026-10-25, the `v0.2.0` GitHub workflow passed on all four native runners
+  and published the four archives plus `SHA256SUMS`. From a temporary copy of
+  that tag, `scripts/install.sh` downloaded and verified the real macOS ARM64
+  release; `scripts/run.sh --help` succeeded with `PATH=/usr/bin:/bin` (no Bun).
+  This did not register a plugin or write to the device. A fresh install via
+  Herdr itself was not probed. The public repository has topic `herdr-plugin`;
+  actual marketplace indexing is asynchronous and not yet verified.
+
 ## Fixture-tested plugin contracts (not new live Herdr measurements)
 
 - `src/regression.test.ts` connects the real Device and Painter: a failed API
