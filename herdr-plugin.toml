@@ -1,0 +1,50 @@
+# Herdr plugin manifest.
+#
+# Local development:  herdr plugin link /path/to/herdr-awtrix
+# Publish:            herdr plugin install saplaum/herdr-awtrix
+#
+# Requires `bun` on PATH. Nothing is built at install time; Bun runs the
+# TypeScript directly.
+
+id = "saplaum.herdr-awtrix"
+name = "AWTRIX Indicator"
+version = "0.1.0"
+min_herdr_version = "0.9.1"
+description = "Drives an AWTRIX indicator pixel with the state of every agent in your Herdr session"
+platforms = ["linux", "macos"]
+
+# A one-shot launch, not a supervised daemon: the process stays alive itself,
+# polling the session and writing to the indicator. Herdr runs it once after
+# the server restores a session and its API socket is ready.
+[[startup]]
+command = ["bun", "run", "index.ts"]
+
+[[actions]]
+id = "start"
+title = "AWTRIX: start the writer"
+contexts = ["workspace"]
+command = ["bun", "run", "index.ts"]
+
+[[actions]]
+id = "status"
+title = "AWTRIX: show the current state"
+contexts = ["workspace"]
+command = ["bun", "run", "index.ts", "--once"]
+
+[[actions]]
+id = "test"
+title = "AWTRIX: cycle the indicator colors"
+contexts = ["workspace"]
+command = ["bun", "run", "index.ts", "--test"]
+
+[[actions]]
+id = "stop"
+title = "AWTRIX: stop the writer and clear the indicator"
+contexts = ["workspace"]
+command = ["bun", "run", "index.ts", "--stop"]
+
+[[actions]]
+id = "off"
+title = "AWTRIX: turn the indicator off"
+contexts = ["workspace"]
+command = ["bun", "run", "index.ts", "--off"]

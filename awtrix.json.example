@@ -1,0 +1,20 @@
+{
+  "sessionSocketPath": "",
+  "awtrixUrl": "http://clock.local",
+  "indicator": 3,
+  "timeoutMs": 6000,
+  "pollMs": 500,
+  "fadeMs": 1500,
+  "api": "auto",
+  "colors": {
+    "working": [0, 255, 0],
+    "blocked": [255, 191, 0],
+    "done": [0, 128, 255],
+    "idle": "0"
+  },
+  "notify": true,
+  "notifyShowAgent": false,
+  "notifyColor": null,
+  "notifyStates": ["blocked", "done"],
+  "notifyMinIntervalMs": 15000
+}
