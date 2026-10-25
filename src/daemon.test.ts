@@ -5,7 +5,11 @@ import { existsSync, mkdtempSync, renameSync, rmSync, writeFileSync } from "node
 import { createServer as httpServer, type Server as HttpServer, type ServerResponse } from "node:http"
 import { createServer, type Server, type Socket } from "node:net"
 import { tmpdir } from "node:os"
-import { join } from "node:path"
+import { join, resolve } from "node:path"
+
+// Run this same lifecycle suite against a compiled executable, without a runtime on PATH.
+const binary = process.env.HERDR_AWTRIX_TEST_BINARY
+const executable = binary ? resolve(binary) : process.execPath
 
 let directory: string
 let socketPath: string
@@ -56,15 +60,16 @@ function start(args: string[] = [], throughLauncher = false) {
   for (const key of Object.keys(env)) {
     if (key.startsWith("HERDR_AWTRIX_") || key.startsWith("HERDR_PLUGIN_")) delete env[key]
   }
+  const childArgs = binary ? args : ["run", "index.ts", ...args]
   const command = throughLauncher ? ["--eval", `
     const { spawn } = require("node:child_process");
-    const child = spawn(process.execPath, ${JSON.stringify(["run", "index.ts", ...args])}, { stdio: ["ignore", "inherit", "inherit"] });
+    const child = spawn(${JSON.stringify(executable)}, ${JSON.stringify(childArgs)}, { stdio: ["ignore", "inherit", "inherit"] });
     console.log("fixture-child-pid:" + child.pid);
     setInterval(() => {}, 1000);
-  `] : ["run", "index.ts", ...args]
-  const child = spawn(process.execPath, command, {
+  `] : childArgs
+  const child = spawn(throughLauncher ? process.execPath : executable, command, {
     cwd: join(import.meta.dir, ".."),
-    env: { ...env, HOME: directory, HERDR_SOCKET_PATH: socketPath, HERDR_AWTRIX_CONFIG_PATH: configPath,
+    env: { ...env, ...(binary ? { PATH: "" } : {}), HOME: directory, HERDR_SOCKET_PATH: socketPath, HERDR_AWTRIX_CONFIG_PATH: configPath,
       HERDR_PLUGIN_STATE_DIR: join(directory, "state") },
     stdio: ["ignore", "pipe", "pipe"],
   })
@@ -119,6 +124,31 @@ afterEach(async () => {
   api.closeAllConnections()
   await new Promise<void>((resolve) => api.close(() => resolve()))
   rmSync(directory, { recursive: true, force: true })
+})
+
+test("once reports the snapshot without writing to the device", async () => {
+  const command = start(["--once"])
+  await until(command.exited, command.output)
+  expect(await command.exit).toBe(0)
+  const report = JSON.parse(command.output())
+  expect(report.state).toBe("working")
+  expect(report.color).toBe("#00ff00")
+  expect(report.lit).toBe(true)
+  expect(writes).toHaveLength(0)
+})
+
+test("status transitions paint the configured middle indicator and shutdown clears it", async () => {
+  configure({ indicator: 2 })
+  const daemon = start()
+  for (const [state, color] of [["working", "#00ff00"], ["blocked", "#ffbf00"], ["done", "#0080ff"]]) {
+    agentStatus = state!
+    await until(() => writes.some((w) => w.path === "/api/v1/indicators/2" && w.body.color === color && w.body.on === true), daemon.output)
+  }
+  daemon.child.kill("SIGTERM")
+  await until(daemon.exited, daemon.output)
+  expect(await daemon.exit).toBe(0)
+  expect(writes.at(-1)?.path).toBe("/api/v1/indicators/2")
+  expect(writes.at(-1)?.body.on).toBe(false)
 })
 
 test("invalid reload preserves the last good config, then repaints the same state", async () => {

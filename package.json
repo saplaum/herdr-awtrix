@@ -1,6 +1,6 @@
 {
   "name": "herdr-awtrix",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "private": true,
   "type": "module",
   "description": "Herdr plugin that drives an AWTRIX indicator over HTTP",
@@ -9,6 +9,7 @@
   },
   "scripts": {
     "start": "bun run index.ts",
+    "build": "bun run scripts/build.ts",
     "test": "bun test",
     "typecheck": "tsc --noEmit"
   },

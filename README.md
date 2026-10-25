@@ -40,12 +40,13 @@ By default, when an agent becomes `blocked` or `done`, the plugin shows its
 workspace name over whatever the clock is displaying:
 
 ```text
-STS Test +2
+Herdr-AWTRIX +2
 ```
 
 `+2` means two additional agents entered a notification state in the same poll.
 The text defaults to the triggering state's color, which can differ from the
-aggregate status dot. Existing states are not announced on startup, and an
+aggregate status dot. Workspace names keep their original capitalization, even
+when the clock's global uppercase setting is enabled. Existing states are not announced on startup, and an
 unchanged state is not announced again on every poll.
 
 `notifyMinIntervalMs` (default 15000) is the minimum gap between announcements.
@@ -66,8 +67,8 @@ pixel, set `"notify": false`. To use a separate text color, set `notifyColor`:
 { "notify": true, "notifyColor": "#ffffff" }
 ```
 
-By default, announcements show only the workspace name (`STS Test`). Set
-`"notifyShowAgent": true` to include the harness name (`opencode STS Test`).
+By default, announcements show only the workspace name (`Herdr-AWTRIX`). Set
+`"notifyShowAgent": true` to include the harness name (`opencode Herdr-AWTRIX`).
 If the workspace has no name, the harness name is used as a fallback.
 
 `notifyColor` accepts the same color formats as `colors`. Omit it or set it to
@@ -82,7 +83,7 @@ highest-priority first, with their workspace and terminal title:
 ```sh
 herdr plugin action invoke saplaum.herdr-awtrix.status
 # ... "sessions": [{ "agent": "opencode", "status": "working",
-#                    "workspace": "STS Test", "pane_id": "wA:p9",
+#                    "workspace": "Herdr-AWTRIX", "pane_id": "wA:p9",
 #                    "title": "OC | AWTRIX-Plugin-Prinzip…" }]
 ```
 
@@ -107,9 +108,11 @@ Set `indicator` to whichever pixel you want to use.
 
 ## Install
 
-Requires Bun **1.4.2 or newer** (the plugin runs TypeScript directly) and
-Herdr **0.9.1 or newer**. Supported platforms are macOS and Linux; Windows is
-not declared. Device writes use HTTP(S), so use a trusted local network.
+Requires Herdr **0.9.1 or newer**, a POSIX shell, `curl`, `tar` and either
+`sha256sum` or `shasum`. **No Bun, Node or compiler is needed to install or run.**
+Supported platforms are macOS and glibc-based Linux, on ARM64 and x64; Windows
+and Alpine/musl are not supported. Device writes use HTTP(S), so use a trusted
+local network.
 
 **Live-tested with AWTRIX NG 1.2.2 only.** AWTRIX 3 support has fixture tests,
 but has not been verified on a real AWTRIX 3 device.
@@ -117,6 +120,13 @@ but has not been verified on a real AWTRIX 3 device.
 ```sh
 herdr plugin install saplaum/herdr-awtrix
 ```
+
+Installation downloads the matching standalone executable from the GitHub
+Release pinned by the manifest version, verifies its SHA-256 checksum, and checks
+that it runs before Herdr registers the plugin. Missing releases, unsupported
+platforms and checksum failures abort installation instead of leaving a broken
+start action. Checksums detect corruption; they are not independent signatures
+of the release author.
 
 Then create `awtrix.json` in the directory printed by:
 
@@ -179,7 +189,8 @@ After updating plugin code, stop the old process and start a new one:
 
 ```sh
 herdr plugin action invoke saplaum.herdr-awtrix.stop
-# Update the installed plugin or edit your locally linked checkout here.
+herdr plugin update saplaum.herdr-awtrix
+# For a locally linked checkout, edit the source and run `bun run build` instead.
 herdr plugin action invoke saplaum.herdr-awtrix.start
 ```
 
@@ -319,19 +330,71 @@ description = "cycle the AWTRIX indicator"
 bun install --frozen-lockfile              # development dependencies only
 bun test                                  # unit + isolated process/socket/HTTP tests
 bun run typecheck
+bun run build                             # prepare bin/ for local plugin actions
 bun run index.ts --once                   # what the plugin sees right now
 HERDR_AWTRIX_URL=http://clock.local bun run index.ts   # run it in the foreground
 herdr plugin link /path/to/herdr-awtrix   # register this checkout, instead of a GitHub install
 ```
 
-`herdr plugin link` runs no build commands, so nothing needs building first.
+`herdr plugin link` runs no build commands: run `bun run build` before linking
+and after source edits. The default native build stages the executable and its
+version in `bin/`, which the manifest's shell launcher executes. Linking this
+checkout replaces the registered GitHub installation with a local development
+link; it preserves the plugin's configuration. To return to release installs,
+stop the writer, unlink the checkout, then install from GitHub again.
 `herdr plugin log list --plugin saplaum.herdr-awtrix` lists command log records
 and their status.
 
 Run the daemon in the foreground in a tab of its own, so `Ctrl+C` always stops
 it. Stop an existing plugin writer first; foreground runs use the same lock.
 The tests use temporary HOME directories and loopback fixtures; they do not
-control your real Herdr session or AWTRIX. CI is configured for macOS and Linux.
+control your real Herdr session or AWTRIX. CI builds and tests natively on macOS
+and Linux, each on ARM64 and x64.
+
+### Standalone binary builds
+
+Bun 1.4.2 is required to **build**, but the resulting executable needs no
+separately installed Bun or Node runtime:
+
+```sh
+bun install --frozen-lockfile
+bun run build                             # native dist/ output plus bin/ for linking
+sh scripts/run.sh --help                  # the same launcher Herdr uses
+
+# Exercise the actual executable against isolated fixtures, with an empty PATH:
+HERDR_AWTRIX_TEST_BINARY="$PWD/dist/darwin-arm64/herdr-awtrix" \
+  bun test src/daemon.test.ts
+```
+
+The test harness still uses Bun; the executable under test does not. The suite
+checks snapshots, HTTP indicator writes, ownership and shutdown. It never writes
+to your real clock.
+
+An explicit target enables cross-compilation:
+
+```sh
+bun run build darwin-arm64
+bun run build darwin-x64
+bun run build linux-arm64
+bun run build linux-x64
+```
+
+Outputs live at `dist/<target>/herdr-awtrix`. Linux targets use glibc, not musl
+(Alpine). Cross-compiling does not test the target executable; CI runs each one
+on a matching native runner.
+
+The `Checks and binaries` GitHub workflow runs on pushes, pull requests and manual
+invocations. It uploads one `.tar.gz` artifact per target after source and binary
+fixture tests pass. Pushing a `v*` tag additionally creates a GitHub Release with
+all four archives and `SHA256SUMS`, only after every target passes. For a release,
+update the package/manifest versions and push the matching version tag. A tag
+that does not match the manifest version fails the build. Publish the release
+before asking users to install/update that version: the installer deliberately
+fails if its pinned release is not available yet.
+
+The manifest's install step runs `sh scripts/install.sh`; all runtime actions
+use `sh scripts/run.sh`. There is no automatic download on startup, no fallback
+to a global Bun, and no installation of tools into the user's global environment.
 
 Foreground commands do not automatically use Herdr's per-plugin config directory.
 Set `HERDR_AWTRIX_CONFIG_PATH` to your `awtrix.json` path to use the same settings;
@@ -350,8 +413,11 @@ inside Herdr when reading a session.
 - **No scrolling text:** Existing states are not announced on startup. Check
   `notify`, `notifyStates`, and `notifyMinIntervalMs`. Configuration edits apply
   to future events, not text already displayed.
-- **Changes to code have no effect:** Use the stop/start sequence above. Config
-  edits alone do not need a restart.
+- **Changes to code have no effect:** Stop/start alone does not update code.
+  Update the installed plugin, or run `bun run build` in your linked checkout,
+  between stop and start. Config edits alone do not need a restart.
+- **Matching binary is missing:** Reinstall/update a GitHub installation; for
+  a locally linked checkout run `bun run build` before invoking actions.
 - **An example pane ID is not found:** Pane IDs vary by session. Use
   `herdr agent list` to find a current ID before running `herdr agent explain`.
 - **Writer busy after a crash:** Follow the stale-lock recovery instructions in

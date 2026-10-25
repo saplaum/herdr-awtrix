@@ -73,11 +73,13 @@ function usage(): void {
   console.log(`herdr-awtrix — drives an AWTRIX indicator with your Herdr session
 
 Usage:
-  bun run index.ts           poll the session and drive the indicator
-  bun run index.ts --once    print the current state, write nothing
-  bun run index.ts --test    cycle the indicator through every state
-  bun run index.ts --off     turn the indicator off
-  bun run index.ts --stop    ask the running writer to clear the pixel and exit
+  herdr-awtrix           poll the session and drive the indicator
+  herdr-awtrix --once    print the current state, write nothing
+  herdr-awtrix --test    cycle the indicator through every state
+  herdr-awtrix --off     turn the indicator off
+  herdr-awtrix --stop    ask the running writer to clear the pixel and exit
+
+From source: bun run index.ts [options]
 
 Config: ${defaultConfigPath()}
   {
@@ -145,7 +147,7 @@ async function cycle(interrupted: () => boolean): Promise<void> {
       await device.set(state)
       await new Promise((resolve) => setTimeout(resolve, 1_500))
     }
-    if (!interrupted()) await device.notify("herdr-awtrix test", config.colors.done)
+    if (!interrupted()) await device.notify("Herdr-AWTRIX", config.colors.done)
     console.log(`${LOG} done`)
   } finally {
     await device.clear()

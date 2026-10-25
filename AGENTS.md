@@ -34,8 +34,17 @@ Verified against Herdr 0.9.1 (protocol 22) on macOS and AWTRIX NG 1.2.2.
   long-lived process started from a startup hook is the established pattern
   (`herdr-auto-title` does it), even though the hook itself is one-shot.
 - **`herdr plugin link` runs no build commands.** `herdr plugin install` does.
-- **`bun` resolves in the server's environment.** The server already starts
-  another plugin's `bun` process, so the manifest can name `bun` plainly.
+  On 2026-10-25, linking this checkout replaced the registered GitHub source
+  with a local source, preserved config, and did not start the writer. The
+  subsequent `status` action succeeded through `sh scripts/run.sh --once`,
+  using the compiled binary (CLI 0.9.5, server 0.9.1). It reported `working`
+  and indicator 2; no live device write was attempted. A `stop` action with no
+  local owner exited 1 with `no readable writer owner`; it is not an idempotent
+  success when the writer is already absent.
+- **External Bun cannot be assumed on a Herdr user's machine.** On 2026-10-25,
+  the v0.1.0 start/stop actions failed with `No such file or directory (os error 2)`;
+  the installed checkout existed but `bun` was missing. v0.2.0 uses a shell
+  installer/launcher and a standalone binary instead. Bun is a development tool.
 
 ## AWTRIX
 
@@ -68,6 +77,12 @@ Verified against Herdr 0.9.1 (protocol 22) on macOS and AWTRIX NG 1.2.2.
 - **AWTRIX 3 shows a notification at `POST /api/notify`**, and spells the colour
   `color` rather than `textColor`. Not probed live — no AWTRIX 3 device here —
   so treat it as the documented shape rather than a measured one.
+- **Global uppercase can change otherwise untouched workspace names.** On
+  2026-10-25, `GET /api/v1/settings` reported `uppercase: true`. NG's official
+  `docs/guides/text.md` documents per-notification `textCase: "asTyped"` to
+  preserve case; AWTRIX 3's `docs/api.md` documents `textCase: 2`. Payloads are
+  fixture-tested in `src/awtrix.test.ts`; this read-only probe did not verify
+  live rendering of either override. Keep the global device setting unchanged.
 - **The read-back keeps the stored colour when an indicator is off.** After a
   write of `{on: false, color: "#000000"}` the device still reported the previous
   colour with `on: false`, so `on` is the field that means dark, not `color`.
@@ -107,7 +122,19 @@ single-writer loop with a promise chain.
   cache entries and concurrent probes are scoped to the URL.
 - `src/painter.test.ts` checks configuration identity as well as state, including
   edits during an in-flight write. Preserve the single-writer loop.
-- `src/daemon.test.ts` uses separate Bun processes, temporary HOME directories,
+- `bun run build` produces `dist/<os>-<arch>/herdr-awtrix` and stages the native
+  executable/version in `bin/` for local links. Explicit target builds do not
+  replace `bin/`. Set `HERDR_AWTRIX_TEST_BINARY` to an absolute binary path for
+  the daemon suite (empty child `PATH`) and real archive/install/launch test.
+  The macOS ARM64 binary passed these fixtures on 2026-10-25. Other target
+  execution is delegated to native CI runners; local success is not evidence
+  for them.
+- `src/install.test.ts` tests version-pinned URL selection, SHA-256 verification,
+  preserving the previous binary on failure, staging cleanup and launcher
+  argument forwarding. Downloads are intercepted fixtures, not live GitHub
+  releases. Release publication and fresh remote installation need separate
+  verification; the installer deliberately rejects missing release assets.
+- `src/daemon.test.ts` uses separate source or compiled processes, temporary HOME directories,
   Unix sockets and loopback HTTP. It checks exclusive ownership, old-target cleanup,
   socket removal/replacement, launcher-parent death with an unchanged socket,
   failed snapshots, invalid reloads and draining indicator/notification requests

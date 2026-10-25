@@ -196,11 +196,11 @@ export function createDevice(
       // NG takes one body for apps and notifications; AWTRIX 3 has a route of
       // its own and spells the colour `color` rather than `textColor`.
       if (api === "ng") {
-        await send(`${url}/api/v1/notifications`, "POST", { text, textColor: toHex(color) }, config)
+        await send(`${url}/api/v1/notifications`, "POST", { text, textColor: toHex(color), textCase: "asTyped" }, config)
         return
       }
 
-      await send(`${url}/api/notify`, "POST", { text, color }, config)
+      await send(`${url}/api/notify`, "POST", { text, color, textCase: 2 }, config)
     },
   }
 }

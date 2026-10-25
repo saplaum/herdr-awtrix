@@ -9,7 +9,7 @@ function agent(overrides: Partial<NotableAgent> = {}): NotableAgent {
     agent: "opencode",
     status: "blocked",
     pane_id: "w1:p1",
-    workspace: "STS Test",
+    workspace: "Herdr-AWTRIX",
     title: "OC | do a thing",
     ...overrides,
   }
@@ -18,12 +18,16 @@ function agent(overrides: Partial<NotableAgent> = {}): NotableAgent {
 describe("attentionText", () => {
   test("names only the workspace by default", () => {
     expect(resolveConfig({}).notifyShowAgent).toBe(false)
-    expect(attentionText([agent()])).toBe("STS Test")
+    expect(attentionText([agent()])).toBe("Herdr-AWTRIX")
+  })
+
+  test("preserves the workspace's original capitalization", () => {
+    expect(attentionText([agent({ workspace: "Herdr-AWTRIX" })])).toBe("Herdr-AWTRIX")
   })
 
   test("optionally includes the harness name", () => {
     const config = resolveConfig({ notifyShowAgent: true })
-    expect(attentionText([agent()], config.notifyShowAgent)).toBe("opencode STS Test")
+    expect(attentionText([agent()], config.notifyShowAgent)).toBe("opencode Herdr-AWTRIX")
   })
 
   test("a whitespace-only workspace falls back to the harness", () => {
@@ -36,11 +40,11 @@ describe("attentionText", () => {
 
   test("counts the others rather than listing them", () => {
     // On a 32-pixel panel, three names is three screens of scrolling.
-    expect(attentionText([agent(), agent(), agent()])).toBe("STS Test +2")
+    expect(attentionText([agent(), agent(), agent()])).toBe("Herdr-AWTRIX +2")
   })
 
   test("collapses what a panel cannot render", () => {
-    expect(attentionText([agent({ workspace: "STS\n  Test" })])).toBe("STS Test")
+    expect(attentionText([agent({ workspace: "\n  Herdr-AWTRIX  \n" })])).toBe("Herdr-AWTRIX")
   })
 
   test("keeps a long workspace label from pushing the agent off the screen", () => {

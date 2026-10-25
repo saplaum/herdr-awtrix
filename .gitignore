@@ -1,4 +1,6 @@
 node_modules/
+dist/
+bin/
 *.log
 .DS_Store
 .env
@@ -6,3 +8,4 @@ node_modules/
 !.env.example
 awtrix.json
 awtrix.*.json
+.pi

@@ -17,7 +17,7 @@ import type { NotableAgent, State } from "./state"
 const MAX_TEXT = 48
 
 /**
- * `STS Test`, optionally prefixed with the harness name, and suffixed with `+2`
+ * `Herdr-AWTRIX`, optionally prefixed with the harness name, and suffixed with `+2`
  * when more than one additional agent asked for attention at once.
  * The verb is left out because the notification's colour
  * already carries it, and on a 32-pixel panel every character costs a moment of

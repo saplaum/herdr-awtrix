@@ -75,7 +75,7 @@ describe("payloads", () => {
 })
 
 describe("notifications", () => {
-  test("NG shows a message in the state's colour", async () => {
+  test("NG preserves mixed-case text even when the clock defaults to uppercase", async () => {
     const calls: Array<{ method: string; url: string; body: string }> = []
     const fetchImpl = (async (url: string | URL, init?: RequestInit) => {
       calls.push({ method: init?.method ?? "GET", url: String(url), body: String(init?.body) })
@@ -84,12 +84,12 @@ describe("notifications", () => {
     }) as unknown as typeof fetch
 
     const device = createDevice(() => ({ ...CONFIG, awtrixUrl: "http://clock.local" }), fetchImpl)
-    await device.notify("opencode STS Test", [255, 191, 0])
+    await device.notify("opencode Herdr-AWTRIX", [255, 191, 0])
 
     expect(calls[1]).toEqual({
       method: "POST",
       url: "http://clock.local/api/v1/notifications",
-      body: JSON.stringify({ text: "opencode STS Test", textColor: "#ffbf00" }),
+      body: JSON.stringify({ text: "opencode Herdr-AWTRIX", textColor: "#ffbf00", textCase: "asTyped" }),
     })
   })
 
@@ -102,12 +102,12 @@ describe("notifications", () => {
     }) as unknown as typeof fetch
 
     const device = createDevice(() => ({ ...CONFIG, awtrixUrl: "http://clock.local" }), fetchImpl)
-    await device.notify("opencode", [0, 128, 255])
+    await device.notify("opencode Herdr-AWTRIX", [0, 128, 255])
 
     expect(calls[1]).toEqual({
       method: "POST",
       url: "http://clock.local/api/notify",
-      body: JSON.stringify({ text: "opencode", color: [0, 128, 255] }),
+      body: JSON.stringify({ text: "opencode Herdr-AWTRIX", color: [0, 128, 255], textCase: 2 }),
     })
   })
 
